@@ -8,7 +8,7 @@
 
 #define WOW_EXE "wow.exe" // lowercase
 #ifdef _WIN32
-#	includes < windows.h>
+#	include < windows.h>
 #else
 #	include <fcntl.h>
 #	include <unistd.h>
