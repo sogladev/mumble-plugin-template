@@ -19,6 +19,9 @@
 struct MumbleAPI_v_1_0_x mumbleAPI;
 mumble_plugin_id_t ownID;
 
+// Process ID for the target process (WoW)
+static procid_t pPid = 0;
+
 mumble_error_t mumble_init(mumble_plugin_id_t pluginID) {
 	ownID = pluginID;
 
@@ -156,6 +159,7 @@ uint8_t mumble_initPositionalData(const char *const *programNames,
 	for (size_t i = 0; i < programCount; i++) {
 		if (_stricmp(programNames[i], WOW_EXE) == 0) {
 			found = true;
+			pPid = programPIDs[i]; // Store the process ID
 			snprintf(logBuffer, sizeof(logBuffer),
 					 "Found direct WoW process: %s (PID: %llu)",
 					 programNames[i], (unsigned long long) programPIDs[i]);
@@ -185,6 +189,7 @@ uint8_t mumble_initPositionalData(const char *const *programNames,
 		// Check for direct match first (rare)
 		if (strcasecmp(programNames[i], WOW_EXE) == 0) {
 			found = true;
+			pPid = programPIDs[i]; // Store the process ID
 			snprintf(logBuffer, sizeof(logBuffer),
 					 "Found direct WoW process: %s (PID: %llu)",
 					 programNames[i], (unsigned long long) programPIDs[i]);
@@ -197,6 +202,7 @@ uint8_t mumble_initPositionalData(const char *const *programNames,
 			// Check if this Wine process is running WoW
 			if (isWineRunningWow(programPIDs[i])) {
 				found = true;
+				pPid = programPIDs[i]; // Store the process ID
 				snprintf(logBuffer, sizeof(logBuffer),
 						 "Found WoW running under Wine: %s (PID: %llu)",
 						 programNames[i], (unsigned long long) programPIDs[i]);
