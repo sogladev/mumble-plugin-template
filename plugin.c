@@ -4,13 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define WOW_EXE "Wow.exe" // Capitalization matters
+
 struct MumbleAPI_v_1_0_x mumbleAPI;
 mumble_plugin_id_t ownID;
 
 mumble_error_t mumble_init(mumble_plugin_id_t pluginID) {
 	ownID = pluginID;
 
-	if (mumbleAPI.log(ownID, "Hello Mumble") != MUMBLE_STATUS_OK) {
+	if (mumbleAPI.log(ownID, "Wow335 Positional Audio loaded") != MUMBLE_STATUS_OK) {
 		// Logging failed -> usually you'd probably want to log things like this in your plugin's
 		// logging system (if there is any)
 	}
@@ -19,14 +21,14 @@ mumble_error_t mumble_init(mumble_plugin_id_t pluginID) {
 }
 
 void mumble_shutdown() {
-	if (mumbleAPI.log(ownID, "Goodbye Mumble") != MUMBLE_STATUS_OK) {
+	if (mumbleAPI.log(ownID, "Wow335 Positional Audio unloaded") != MUMBLE_STATUS_OK) {
 		// Logging failed -> usually you'd probably want to log things like this in your plugin's
 		// logging system (if there is any)
 	}
 }
 
 struct MumbleStringWrapper mumble_getName() {
-	static const char *name = "HelloMumble";
+	static const char *name = "Wow335 Positional Audio";
 
 	struct MumbleStringWrapper wrapper;
 	wrapper.data = name;
@@ -58,16 +60,17 @@ void mumble_releaseResource(const void *pointer) {
 // Below functions are not strictly necessary but every halfway serious plugin should implement them nonetheless
 
 mumble_version_t mumble_getVersion() {
+	// below should match the description in the manifest.xml and CmakeLists.txt file
 	mumble_version_t version;
-	version.major = 1;
-	version.minor = 0;
+	version.major = 0;
+	version.minor = 1;
 	version.patch = 0;
 
 	return version;
 }
 
 struct MumbleStringWrapper mumble_getAuthor() {
-	static const char *author = "Mumble Developers";
+	static const char *author = "sogladev";
 
 	struct MumbleStringWrapper wrapper;
 	wrapper.data = author;
@@ -78,7 +81,8 @@ struct MumbleStringWrapper mumble_getAuthor() {
 }
 
 struct MumbleStringWrapper mumble_getDescription() {
-	static const char *description = "A simple plugin template that can say hello and goodbye";
+	// below should match the description in the manifest.xml and CmakeLists.txt file
+	static const char *description = "A positional audio plugin for World of Warcraft (x86) version 3.3.5a.12340";
 
 	struct MumbleStringWrapper wrapper;
 	wrapper.data = description;

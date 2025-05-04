@@ -5,12 +5,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(TargetArch)
 
 project(MumblePlugin
-	VERSION "1.0.0"
-	DESCRIPTION "Minimal Mumble plugin"
+	VERSION "0.1.0"
+	DESCRIPTION "A positional audio plugin for World of Warcraft (x86) version 3.3.5a.12340"
 	LANGUAGES "C"
 )
 
-set(PLUGIN_NAME "hello_mumble")
+set(PLUGIN_NAME "wow355pa")
 
 add_library(plugin
 	SHARED
