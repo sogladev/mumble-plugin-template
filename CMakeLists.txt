@@ -39,4 +39,6 @@ endif()
 
 set_target_properties(plugin PROPERTIES LIBRARY_OUTPUT_NAME "${PLUGIN_NAME}")
 
-add_definitions(-D_GNU_SOURCE -D_DEFAULT_SOURCE)
+if (UNIX)
+	add_definitions(-D_GNU_SOURCE -D_DEFAULT_SOURCE)
+endif()
