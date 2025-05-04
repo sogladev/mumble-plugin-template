@@ -7,7 +7,9 @@
 #include <string.h>
 
 #define WOW_EXE "wow.exe" // lowercase
-#ifndef _WIN32
+#ifdef _WIN32
+#	includes < windows.h>
+#else
 #	include <fcntl.h>
 #	include <unistd.h>
 #	include <ctype.h>
@@ -18,8 +20,9 @@
 #	define WINE_PROCESS "wine"
 #endif
 
-// Add this near the top of your file, after your includes but before using
-// procid_t
+// Every few calls we will log positions for debugging
+static int debugCallCounter = 0;
+
 #ifdef _WIN32
 typedef DWORD procid_t;   // Windows process ID type
 typedef LPVOID procptr_t; // Windows process pointer type
@@ -33,14 +36,34 @@ mumble_plugin_id_t ownID;
 
 // Process ID for the target process (WoW)
 static procid_t pPid = 0;
+#ifdef _WIN32
+static HANDLE hProcess = NULL;
+#endif
 
 // Function to read memory from a process
 static inline bool peekProc(const procptr_t addr, void *dest,
 							const size_t len) {
 #ifdef _WIN32
-	// On Windows, use the Mumble API to read memory
-	return (mumbleAPI.readFromProcess(ownID, addr, dest, len)
-			== MUMBLE_STATUS_OK);
+	SIZE_T bytesRead;
+
+	// Make sure we have a valid handle
+	if (hProcess == NULL) {
+		// Open process with PROCESS_VM_READ access right
+		hProcess = OpenProcess(PROCESS_VM_READ, FALSE, pPid);
+		if (hProcess == NULL) {
+			return false;
+		}
+	}
+
+	BOOL success =
+		ReadProcessMemory(hProcess,       // Handle to the process
+						  (LPCVOID) addr, // Base address to read from
+						  dest,           // Buffer to receive data
+						  len,            // Number of bytes to read
+						  &bytesRead      // Number of bytes actually read
+		);
+
+	return (success != FALSE && bytesRead == len);
 #else
 	// On Linux/Unix, use process_vm_readv
 	struct iovec in;
@@ -255,6 +278,12 @@ uint8_t mumble_initPositionalData(const char *const *programNames,
 }
 
 void mumble_shutdownPositionalData() {
+#ifdef _WIN32
+	if (hProcess != NULL) {
+		CloseHandle(hProcess);
+		hProcess = NULL;
+	}
+#endif
 }
 
 #define SET_TO_ZERO(name) \
@@ -266,15 +295,15 @@ bool mumble_fetchPositionalData(float *avatarPos, float *avatarDir,
 								float *cameraDir, float *cameraAxis,
 								const char **context, const char **identity) {
 	// Memory addresses
-	uint32_t state_address          = 0x00BD0792;
-	uint32_t avatar_pos_address     = 0x00ADF4E4;
-	uint32_t avatar_heading_address = 0x00BEBA70;
-	uint32_t camera_pos_address = 0x00ADF4E4; // Same as avatar position in WoW
-	uint32_t camera_front_address = 0x00ADF5F0;
-	uint32_t camera_top_address   = 0x00ADF554;
-	uint32_t player_address       = 0x00C79D18;
-	uint32_t mapid_address        = 0x00AB63BC;
-	uint32_t leaderguid_address   = 0x00BD1968;
+	procptr_t state_address          = (procptr_t) 0x00BD0792;
+	procptr_t avatar_pos_address     = (procptr_t) 0x00ADF4E4;
+	procptr_t avatar_heading_address = (procptr_t) 0x00BEBA70;
+	procptr_t camera_pos_address     = (procptr_t) 0x00ADF4E4;
+	procptr_t camera_front_address   = (procptr_t) 0x00ADF5F0;
+	procptr_t camera_top_address     = (procptr_t) 0x00ADF554;
+	procptr_t player_address         = (procptr_t) 0x00C79D18;
+	procptr_t mapid_address          = (procptr_t) 0x00AB63BC;
+	procptr_t leaderguid_address     = (procptr_t) 0x00BD1968;
 
 	// Temporary variables to hold data read from the game
 	char state                      = 0;
@@ -292,17 +321,15 @@ bool mumble_fetchPositionalData(float *avatarPos, float *avatarDir,
 	static char identity_buffer[256] = { 0 };
 
 	// Reading values from game memory using peekProc
-	bool ok =
-		peekProc((procptr_t) state_address, &state, 1)
-		&& peekProc((procptr_t) avatar_pos_address, avatar_pos_corrector, 12)
-		&& peekProc((procptr_t) avatar_heading_address, &avatar_heading, 4)
-		&& peekProc((procptr_t) camera_pos_address, camera_pos_corrector, 12)
-		&& peekProc((procptr_t) camera_front_address, camera_front_corrector,
-					12)
-		&& peekProc((procptr_t) camera_top_address, camera_top_corrector, 12)
-		&& peekProc((procptr_t) player_address, player, 50)
-		&& peekProc((procptr_t) mapid_address, &mapId, 4)
-		&& peekProc((procptr_t) leaderguid_address, &leaderGUID, 4);
+	bool ok = peekProc(state_address, &state, 1)
+			  && peekProc(avatar_pos_address, avatar_pos_corrector, 12)
+			  && peekProc(avatar_heading_address, &avatar_heading, 4)
+			  && peekProc(camera_pos_address, camera_pos_corrector, 12)
+			  && peekProc(camera_front_address, camera_front_corrector, 12)
+			  && peekProc(camera_top_address, camera_top_corrector, 12)
+			  && peekProc(player_address, player, 50)
+			  && peekProc(mapid_address, &mapId, 4)
+			  && peekProc(leaderguid_address, &leaderGUID, 4);
 
 	// Reset all vectors if any read failed or not in game
 	if (!ok || state != 1) {
@@ -372,6 +399,43 @@ bool mumble_fetchPositionalData(float *avatarPos, float *avatarDir,
 	cameraAxis[0] = -camera_top_corrector[1];
 	cameraAxis[1] = camera_top_corrector[2];
 	cameraAxis[2] = camera_top_corrector[0];
+
+	// Debug log every few calls
+	debugCallCounter++;
+	if (debugCallCounter % 32 == 0) {
+		char logBuffer[512];
+
+		snprintf(logBuffer, sizeof(logBuffer),
+				 "DEBUG Values - State: %d, MapID: %d, Player: %s", state,
+				 mapId, player);
+		mumbleAPI.log(ownID, logBuffer);
+
+		snprintf(logBuffer, sizeof(logBuffer),
+				 "Avatar Pos: [%.2f, %.2f, %.2f] Dir: [%.2f, %.2f, %.2f] Axis: "
+				 "[%.2f, %.2f, %.2f]",
+				 avatarPos[0], avatarPos[1], avatarPos[2], avatarDir[0],
+				 avatarDir[1], avatarDir[2], avatarAxis[0], avatarAxis[1],
+				 avatarAxis[2]);
+		mumbleAPI.log(ownID, logBuffer);
+
+		snprintf(logBuffer, sizeof(logBuffer),
+				 "Camera Pos: [%.2f, %.2f, %.2f] Dir: [%.2f, %.2f, %.2f] Axis: "
+				 "[%.2f, %.2f, %.2f]",
+				 cameraPos[0], cameraPos[1], cameraPos[2], cameraDir[0],
+				 cameraDir[1], cameraDir[2], cameraAxis[0], cameraAxis[1],
+				 cameraAxis[2]);
+		mumbleAPI.log(ownID, logBuffer);
+
+		snprintf(logBuffer, sizeof(logBuffer), "Context: %s", *context);
+		mumbleAPI.log(ownID, logBuffer);
+
+		snprintf(logBuffer, sizeof(logBuffer), "Identity: %s", *identity);
+		mumbleAPI.log(ownID, logBuffer);
+
+		snprintf(logBuffer, sizeof(logBuffer),
+				 "Raw memory - Avatar heading: %.2f", avatar_heading);
+		mumbleAPI.log(ownID, logBuffer);
+	}
 
 	return true;
 }
