@@ -20,7 +20,7 @@
 const int32_t MUMBLE_PLUGIN_API_MAJOR            = MUMBLE_PLUGIN_API_MAJOR_MACRO;
 const int32_t MUMBLE_PLUGIN_API_MINOR            = MUMBLE_PLUGIN_API_MINOR_MACRO;
 const int32_t MUMBLE_PLUGIN_API_PATCH            = MUMBLE_PLUGIN_API_PATCH_MACRO;
-const mumble_version_t MUMBLE_PLUGIN_API_VERSION = { MUMBLE_PLUGIN_API_MAJOR, MUMBLE_PLUGIN_API_MINOR,
+static const mumble_version_t MUMBLE_PLUGIN_API_VERSION = { MUMBLE_PLUGIN_API_MAJOR, MUMBLE_PLUGIN_API_MINOR,
 													 MUMBLE_PLUGIN_API_PATCH };
 
 // Create macro for casting the pointer to the API object to the proper struct.
