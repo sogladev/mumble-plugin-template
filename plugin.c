@@ -1,5 +1,6 @@
 #include "MumblePlugin_v_1_0_x.h"
 
+#include "PluginComponents_v_1_0_x.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
