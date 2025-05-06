@@ -10,3 +10,8 @@ link for easier testing
 ```
 ln -s "$(realpath build/libwow355pa_linux_x86_64.so)" "$HOME/.local/share/Mumble/Mumble/Plugins/"
 ```
+
+fix permission issues for mumble
+```
+sudo setcap cap_sys_ptrace=eip "$(which mumble)"
+```
